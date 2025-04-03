@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système de Gestion des Tickets IT</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header id="header">
+            <div class="logo">
+                <i class="fas fa-headset"></i>
+                <span>Support IT</span>
+            </div>
+            <div class="user-section" id="user-section">
+                <span id="user-name">Non connecté</span>
+                <button id="login-btn" class="btn btn-primary">Connexion</button>
+                <button id="logout-btn" class="btn btn-danger hide">Déconnexion</button>
+            </div>
+        </header>
+
+        <!-- Sidebar Navigation -->
+        <nav id="sidebar">
+            <ul>
+                <li class="role-all"><a href="#dashboard" id="nav-dashboard"><i class="fas fa-tachometer-alt"></i> Tableau de bord</a></li>
+                <li class="role-all"><a href="#tickets" id="nav-tickets"><i class="fas fa-ticket-alt"></i> Tickets</a></li>
+                <li class="role-employee"><a href="#create-ticket" id="nav-create-ticket"><i class="fas fa-plus-circle"></i> Nouveau Ticket</a></li>
+                <li class="role-tech role-admin"><a href="#assignations" id="nav-assignations"><i class="fas fa-tasks"></i> Assignations</a></li>
+                <li class="role-admin"><a href="#users" id="nav-users"><i class="fas fa-users"></i> Utilisateurs</a></li>
+                <li class="role-admin"><a href="#stats" id="nav-stats"><i class="fas fa-chart-bar"></i> Statistiques</a></li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main id="main-content">
+            <!-- Login Form -->
+            <section id="login-section" class="section">
+                <div class="card">
+                    <h2>Connexion</h2>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="email">Email:</label>
+                            <input type="email" id="email" name="email" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Mot de passe:</label>
+                            <input type="password" id="password" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Se connecter</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="section hide">
+                <h1>Tableau de bord</h1>
+                <div class="dashboard-cards">
+                    <div class="card">
+                        <h3>Tickets en attente</h3>
+                        <p class="big-number" id="pending-tickets">0</p>
+                        <i class="fas fa-clock card-icon"></i>
+                    </div>
+                    <div class="card">
+                        <h3>Tickets en cours</h3>
+                        <p class="big-number" id="in-progress-tickets">0</p>
+                        <i class="fas fa-spinner card-icon"></i>
+                    </div>
+                    <div class="card">
+                        <h3>Tickets résolus</h3>
+                        <p class="big-number" id="resolved-tickets">0</p>
+                        <i class="fas fa-check-circle card-icon"></i>
+                    </div>
+                    <div class="card">
+                        <h3>Temps moyen de résolution</h3>
+                        <p class="big-number" id="avg-time">0h</p>
+                        <i class="fas fa-hourglass-half card-icon"></i>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="card">
+                            <h3>Tickets par priorité</h3>
+                            <canvas id="priority-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card">
+                            <h3>Tickets récents</h3>
+                            <div class="recent-tickets-list" id="recent-tickets">
+                                <!-- Les tickets récents seront générés dynamiquement ici -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Tickets List Section -->
+            <section id="tickets-section" class="section hide">
+                <h1>Liste des Tickets</h1>
+                <div class="filters">
+                    <div class="form-group">
+                        <label for="status-filter">Statut:</label>
+                        <select id="status-filter">
+                            <option value="all">Tous</option>
+                            <option value="Ouvert">Ouvert</option>
+                            <option value="En cours">En cours</option>
+                            <option value="Résolu">Résolu</option>
+                            <option value="Fermé">Fermé</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="priority-filter">Priorité:</label>
+                        <select id="priority-filter">
+                            <option value="all">Toutes</option>
+                            <option value="Faible">Faible</option>
+                            <option value="Moyenne">Moyenne</option>
+                            <option value="Élevée">Élevée</option>
+                            <option value="Critique">Critique</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="search">Recherche:</label>
+                        <input type="text" id="search" placeholder="Titre ou description...">
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table id="tickets-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Titre</th>
+                                <th>Statut</th>
+                                <th>Priorité</th>
+                                <th>Date de création</th>
+                                <th>Assigné à</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tickets-list">
+                            <!-- Les tickets seront générés dynamiquement ici -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="tickets-pagination">
+                    <!-- La pagination sera générée dynamiquement ici -->
+                </div>
+            </section>
+
+            <!-- Create Ticket Section -->
+            <section id="create-ticket-section" class="section hide">
+                <h1>Créer un nouveau ticket</h1>
+                <div class="card">
+                    <form id="create-ticket-form">
+                        <div class="form-group">
+                            <label for="ticket-title">Titre:</label>
+                            <input type="text" id="ticket-title" name="titre" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ticket-description">Description détaillée:</label>
+                            <textarea id="ticket-description" name="description" rows="6" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="ticket-priority">Priorité:</label>
+                            <select id="ticket-priority" name="priorite">
+                                <option value="Faible">Faible</option>
+                                <option value="Moyenne" selected>Moyenne</option>
+                                <option value="Élevée">Élevée</option>
+                                <option value="Critique">Critique</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Soumettre le ticket</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Ticket Detail Section -->
+            <section id="ticket-detail-section" class="section hide">
+                <div class="ticket-header">
+                    <h1 id="ticket-detail-title">Détail du ticket</h1>
+                    <div class="ticket-actions">
+                        <button id="back-to-tickets" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</button>
+                        <div class="role-tech role-admin">
+                            <button id="assign-ticket" class="btn btn-primary"><i class="fas fa-user-plus"></i> Assigner</button>
+                            <button id="change-status" class="btn btn-warning"><i class="fas fa-exchange-alt"></i> Changer le statut</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="ticket-content">
+                    <div class="card ticket-info">
+                        <div class="info-row">
+                            <div class="info-item">
+                                <span class="label">ID:</span>
+                                <span id="detail-id" class="value"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Statut:</span>
+                                <span id="detail-status" class="value status"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Priorité:</span>
+                                <span id="detail-priority" class="value priority"></span>
+                            </div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-item">
+                                <span class="label">Créé par:</span>
+                                <span id="detail-creator" class="value"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Date de création:</span>
+                                <span id="detail-created" class="value"></span>
+                            </div>
+                            <div class="info-item">
+                                <span class="label">Dernière mise à jour:</span>
+                                <span id="detail-updated" class="value"></span>
+                            </div>
+                        </div>
+                        <div class="info-row">
+                            <div class="info-item">
+                                <span class="label">Assigné à:</span>
+                                <span id="detail-assigned" class="value"></span>
+                            </div>
+                        </div>
+                        <h3>Description</h3>
+                        <p id="detail-description"></p>
+                    </div>
+
+                    <div class="card">
+                        <h3>Commentaires</h3>
+                        <div id="comments-list">
+                            <!-- Les commentaires seront générés dynamiquement ici -->
+                        </div>
+                        <form id="add-comment-form">
+                            <div class="form-group">
+                                <textarea id="comment-content" placeholder="Ajouter un commentaire..." rows="3" required></textarea>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Users Management Section (Admin only) -->
+            <section id="users-section" class="section hide role-admin">
+                <h1>Gestion des Utilisateurs</h1>
+                <button id="add-user-btn" class="btn btn-primary"><i class="fas fa-user-plus"></i> Ajouter un utilisateur</button>
+                <div class="table-container">
+                    <table id="users-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Rôle</th>
+                                <th>Date d'inscription</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-list">
+                            <!-- Les utilisateurs seront générés dynamiquement ici -->
+                        </tbody>
+                    </table>
+                </div>
+                <!-- Add User Modal -->
+                <div id="add-user-modal" class="modal hide">
+                    <div class="modal-content">
+                        <span class="close">&times;</span>
+                        <h2>Ajouter un utilisateur</h2>
+                        <form id="add-user-form">
+                            <div class="form-group">
+                                <label for="user-name">Nom:</label>
+                                <input type="text" id="user-name" name="nom" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="user-email">Email:</label>
+                                <input type="email" id="user-email" name="email" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="user-password">Mot de passe:</label>
+                                <input type="password" id="user-password" name="mot_de_passe" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="user-role">Rôle:</label>
+                                <select id="user-role" name="role">
+                                    <option value="Employé">Employé</option>
+                                    <option value="Technicien">Technicien</option>
+                                    <option value="Admin">Administrateur</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Statistics Section (Admin only) -->
+            <section id="stats-section" class="section hide role-admin">
+                <h1>Statistiques</h1>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="card">
+                            <h3>Tickets par mois</h3>
+                            <canvas id="monthly-tickets-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card">
+                            <h3>Temps moyen de résolution par technicien</h3>
+                            <canvas id="tech-resolution-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-6">
+                        <div class="card">
+                            <h3>Tickets par statut</h3>
+                            <canvas id="status-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="card">
+                            <h3>Performance des techniciens</h3>
+                            <div class="table-container">
+                                <table id="tech-performance-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Technicien</th>
+                                            <th>Tickets résolus</th>
+                                            <th>Temps moyen (heures)</th>
+                                            <th>Satisfaction</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tech-performance-list">
+                                        <!-- Les données de performance seront générées dynamiquement ici -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Status Change Modal -->
+        <div id="status-modal" class="modal hide">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Changer le statut du ticket</h2>
+                <form id="change-status-form">
+                    <div class="form-group">
+                        <label for="new-status">Nouveau statut:</label>
+                        <select id="new-status" name="statut">
+                            <option value="Ouvert">Ouvert</option>
+                            <option value="En cours">En cours</option>
+                            <option value="Résolu">Résolu</option>
+                            <option value="Fermé">Fermé</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="status-comment">Commentaire (optionnel):</label>
+                        <textarea id="status-comment" name="commentaire" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Assign Technician Modal -->
+        <div id="assign-modal" class="modal hide">
+            <div class="modal-content">
+                <span class="close">&times;</span>
+                <h2>Assigner un technicien</h2>
+                <form id="assign-form">
+                    <div class="form-group">
+                        <label for="technician-select">Technicien:</label>
+                        <select id="technician-select" name="id_technicien">
+                            <!-- Les techniciens seront générés dynamiquement ici -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="assign-comment">Commentaire (optionnel):</label>
+                        <textarea id="assign-comment" name="commentaire" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Assigner</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div id="notification" class="notification hide"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/tickets.js"></script>
+    <script src="js/users.js"></script>
+    <script src="js/stats.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
