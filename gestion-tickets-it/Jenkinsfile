@@ -1,143 +1,100 @@
 pipeline {
-    agent any     // Utilise n'importe quel agent Jenkins disponible
-    
+    agent any
+
     environment {
-        // Définition des variables d'environnement utilisées dans le pipeline
-        DOCKER_HUB_CREDS = credentials('docker-hub-credentials')    // Récupère les credentials Docker Hub
-        APP_VERSION = "${BUILD_NUMBER}"                            // Utilise le numéro de build comme version
-        DOCKER_REGISTRY = "votre-registry"                         // Votre registry Docker (ex: Docker Hub username)
-        DOCKER_FRONTEND_IMAGE = "${DOCKER_REGISTRY}/support-ticket-frontend:${APP_VERSION}"
-        DOCKER_BACKEND_IMAGE = "${DOCKER_REGISTRY}/support-ticket-backend:${APP_VERSION}"
-        DOCKER_DB_IMAGE = "${DOCKER_REGISTRY}/support-ticket-db:${APP_VERSION}"
+        // Définir les variables d'environnement ici si nécessaire
+        DOCKER_IMAGE_BACKEND = 'gestion-tickets-backend'
+        DOCKER_IMAGE_FRONTEND = 'gestion-tickets-frontend'
+        DOCKER_IMAGE_DB = 'gestion-tickets-db'
+        DOCKER_REGISTRY = 'docker.io' // Exemple de registry Docker, modifiez-le si nécessaire
     }
-    
+
     stages {
-        // Étape 1: Récupération du code source
         stage('Checkout') {
             steps {
-                checkout scm    // Récupère le code depuis le système de gestion de versions
-                echo 'Code source récupéré avec succès'
+                // Récupérer le code source depuis le repository Git
+                checkout scm
             }
         }
-        
-        // Étape 2: Tests du backend
-        stage('Test Backend') {
-            steps {
-                dir('backend') {    // Se déplace dans le répertoire backend
-                    sh 'npm install'    // Installe les dépendances
-                    sh 'npm test'       // Exécute les tests
-                }
-                echo 'Tests backend terminés'
-            }
-        }
-        
-        // Étape 3: Analyse de la qualité du code
-        stage('Code Quality Backend') {
-            steps {
-                dir('backend') {
-                    sh 'npm install eslint --save-dev'    // Installe ESLint
-                    sh 'npx eslint .'                    // Analyse le code
-                }
-                echo 'Analyse de qualité du code backend terminée'
-            }
-        }
-        
-        // Étape 4: Construction des images Docker
+
         stage('Build Docker Images') {
             steps {
-                // Construit les images Docker pour chaque composant
-                sh "docker build -t ${DOCKER_FRONTEND_IMAGE} -f ./frontend/Dockerfile ./frontend"
-                sh "docker build -t ${DOCKER_BACKEND_IMAGE} -f ./backend/Dockerfile ./backend"
-                sh "docker build -t ${DOCKER_DB_IMAGE} -f ./database/Dockerfile ./database"
-                echo 'Images Docker construites avec succès'
+                script {
+                    // Construire les images Docker pour le backend, frontend et db
+                    echo 'Building Docker images...'
+
+                    sh 'docker-compose -f docker-compose.yml build'
+                }
             }
         }
-        
-        // Étape 5: Push des images vers le registry Docker
-        stage('Push Docker Images') {
+
+        stage('Run Tests') {
             steps {
-                // Connexion à Docker Hub
-                sh 'echo $DOCKER_HUB_CREDS_PSW | docker login -u $DOCKER_HUB_CREDS_USR --password-stdin'
-                // Push des images
-                sh "docker push ${DOCKER_FRONTEND_IMAGE}"
-                sh "docker push ${DOCKER_BACKEND_IMAGE}"
-                sh "docker push ${DOCKER_DB_IMAGE}"
-                echo 'Images Docker envoyées au registre'
+                script {
+                    // Vous pouvez ajouter des tests ici pour chaque service
+                    echo 'Running tests...'
+
+                    // Lancer les tests du backend et frontend via Docker
+                    sh 'docker-compose -f docker-compose.yml run backend npm test'
+                    sh 'docker-compose -f docker-compose.yml run frontend npm test'
+                }
             }
         }
-        
-        // Étape 6: Déploiement en environnement de développement (si branche develop)
-        stage('Deploy Development') {
-            when {
-                branch 'develop'    // S'exécute uniquement pour la branche develop
-            }
+
+        stage('Push Docker Images to Registry') {
             steps {
-                // Met à jour les versions dans docker-compose.yml
-                sh "sed -i 's|support-ticket-frontend:.*|support-ticket-frontend:${APP_VERSION}|' docker-compose.yml"
-                sh "sed -i 's|support-ticket-backend:.*|support-ticket-backend:${APP_VERSION}|' docker-compose.yml"
-                sh "sed -i 's|support-ticket-db:.*|support-ticket-db:${APP_VERSION}|' docker-compose.yml"
-                
-                // Déploie avec Docker Compose
-                sh 'docker-compose down'
-                sh 'docker-compose up -d'
-                echo 'Déploiement en environnement de développement terminé'
+                script {
+                    // Se connecter au registre Docker si nécessaire (si authentification est requise)
+                    echo 'Pushing Docker images to registry...'
+
+                    sh 'docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD $DOCKER_REGISTRY'
+
+                    // Pousser les images sur le registre Docker
+                    sh "docker tag ${DOCKER_IMAGE_BACKEND}:latest ${DOCKER_REGISTRY}/${DOCKER_IMAGE_BACKEND}:latest"
+                    sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE_BACKEND}:latest"
+
+                    sh "docker tag ${DOCKER_IMAGE_FRONTEND}:latest ${DOCKER_REGISTRY}/${DOCKER_IMAGE_FRONTEND}:latest"
+                    sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE_FRONTEND}:latest"
+
+                    sh "docker tag ${DOCKER_IMAGE_DB}:latest ${DOCKER_REGISTRY}/${DOCKER_IMAGE_DB}:latest"
+                    sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE_DB}:latest"
+                }
             }
         }
-        
-        // Étape 7: Déploiement en production (si branche main)
-        stage('Deploy Production') {
-            when {
-                branch 'main'    // S'exécute uniquement pour la branche main
-            }
+
+        stage('Deploy to Staging') {
             steps {
-                // Met à jour les versions dans docker-compose.prod.yml
-                sh "sed -i 's|support-ticket-frontend:.*|support-ticket-frontend:${APP_VERSION}|' docker-compose.prod.yml"
-                sh "sed -i 's|support-ticket-backend:.*|support-ticket-backend:${APP_VERSION}|' docker-compose.prod.yml"
-                sh "sed -i 's|support-ticket-db:.*|support-ticket-db:${APP_VERSION}|' docker-compose.prod.yml"
-                
-                // Déploie avec Docker Compose en production
-                sh 'docker-compose -f docker-compose.prod.yml down'
-                sh 'docker-compose -f docker-compose.prod.yml up -d'
-                echo 'Déploiement en production terminé'
+                script {
+                    // Déployer l'application sur l'environnement de staging
+                    echo 'Deploying to staging...'
+
+                    // Utiliser docker-compose pour lancer les services dans un environnement staging
+                    sh 'docker-compose -f docker-compose.yml -p gestion-tickets-staging up -d'
+                }
             }
         }
-        
-        // Étape 8: Tests fonctionnels post-déploiement
-        stage('Functional Tests') {
+
+        stage('Clean up') {
             steps {
-                // Attendre que les services soient disponibles
-                sh 'sleep 30'
-                // Tester les points d'accès
-                sh 'curl -f http://localhost:8501'             // Vérifie le frontend Streamlit
-                sh 'curl -f http://localhost:3000/api/health'  // Vérifie l'API backend
-                echo 'Tests fonctionnels terminés'
+                script {
+                    // Nettoyer les ressources non utilisées, telles que les conteneurs et les images
+                    echo 'Cleaning up...'
+                    sh 'docker system prune -f'
+                }
             }
         }
     }
-    
-    // Actions post-pipeline
+
     post {
         success {
-            echo 'Pipeline CI/CD terminé avec succès!'
-            // Notification de succès
-            emailext (
-                subject: "Pipeline réussi: ${currentBuild.fullDisplayName}",
-                body: "Le pipeline CI/CD a été exécuté avec succès: ${env.BUILD_URL}",
-                to: 'bmassizelle@gmail.com'
-            )
+            echo 'Pipeline finished successfully!'
         }
         failure {
-            echo 'Pipeline CI/CD échoué!'
-            // Notification d'échec
-            emailext (
-                subject: "Pipeline échoué: ${currentBuild.fullDisplayName}",
-                body: "Le pipeline CI/CD a échoué: ${env.BUILD_URL}",
-                to: 'bmassizelle@gmail.com'
-            )
+            echo 'Pipeline failed!'
         }
         always {
-            // Nettoyage de l'espace de travail
-            cleanWs()
+            // Actions à exécuter, peu importe le succès ou l’échec
+            echo 'Cleaning up resources after pipeline execution.'
         }
     }
 }
