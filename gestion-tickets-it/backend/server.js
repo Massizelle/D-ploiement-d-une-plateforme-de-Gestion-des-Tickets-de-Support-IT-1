@@ -1,23 +1,34 @@
 const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
+const bodyParser = require('body-parser');
+const userRoute = require('./src/routes/userRoute');
+const ticketRoute = require('./src/routes/ticketRoute');
+const authRoute = require('./src/routes/authRoute');
+const statsRoute = require('./src/routes/statsRoute')
 
-dotenv.config();
-
+// Créer l'application Express
 const app = express();
 
-// Middleware
-app.use(cors());
+// Middleware pour parser le body des requêtes en JSON
+app.use(bodyParser.json());
+
 app.use(express.json());
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/tickets', require('./routes/tickets'));
-app.use('/api/comments', require('./routes/comments'));
 
-const PORT = process.env.PORT || 5000;
+// Ajouter les routes des utilisateurs
+app.use('/api', userRoute);
 
+// Route pour les tickets
+
+app.use('/api', ticketRoute);
+
+
+app.use('/api', authRoute);
+
+
+app.use('/api', statsRoute);
+
+// Démarrer le serveur
+const PORT = 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Serveur démarré sur http://localhost:${PORT}`);
 });
