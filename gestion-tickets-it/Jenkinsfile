@@ -6,7 +6,7 @@ pipeline {
         DOCKER_IMAGE_BACKEND = 'gestion-tickets-backend'
         DOCKER_IMAGE_FRONTEND = 'gestion-tickets-frontend'
         DOCKER_IMAGE_DB = 'gestion-tickets-db'
-        DOCKER_REGISTRY = 'docker.io' // Exemple de registry Docker, modifiez-le si nécessaire
+        DOCKER_REGISTRY = 'docker.io' 
     }
 
     stages {
