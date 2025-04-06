@@ -86,6 +86,32 @@ class ApiClient:
         else:
             st.error(f"Erreur lors de la récupération du ticket: {response.status_code}, {response.text}")
             return {}
+        
+
+
+
+    def delete_ticket(self, ticket_id: int) -> Dict[str, Any]:
+        """
+        Récupère les détails d'un ticket.
+        
+        Args:
+            ticket_id: Identifiant du ticket
+            
+        Returns:
+            Informations détaillées du ticket
+        """
+        response = requests.delete(
+            f"{self.base_url}/tickets/{ticket_id}",
+            headers=self._get_headers()
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            st.error(f"Erreur lors de la suppression du ticket: {response.status_code}, {response.text}")
+            return {}
+        
+
     
     def create_ticket(self, ticket_data: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -5,11 +5,11 @@ const userController = require('../controllers/userController');  // Ajustez le 
 // Route pour récupérer tous les utilisateurs
 router.get('/users', userController.getAllUsers);
 
-router.get('/users/:id', userController.getUser);
-
 router.get('/users/technicians', userController.getAllTechnicians);
 
 router.get('/users/employees', userController.getAllEmployees);
+
+router.get('/users/:id', userController.getUser);
 
 router.get('/users/admins', userController.getAllAdmins);
 

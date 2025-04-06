@@ -170,7 +170,6 @@ else:
             with st.form("update_ticket_form"):
                 nouveau_statut = st.selectbox("Nouveau statut", config.TICKET_STATUS)
                 
-                # Pour les techniciens, possibilité de s'assigner le ticket
                 if ticket.get("id_technicien") is None or ticket.get("id_technicien") == "":
                     assigner_a_moi = st.checkbox("M'assigner ce ticket")
                 
@@ -179,7 +178,6 @@ else:
                 if soumettre_maj:
                     update_data = {"statut": nouveau_statut}
                     
-                    # Assigner le ticket au technicien actuel si demandé
                     if "assigner_a_moi" in locals() and assigner_a_moi:
                         update_data["id_technicien"] = get_current_user().get("id")
                     
@@ -189,6 +187,16 @@ else:
                         st.experimental_rerun()
                     else:
                         st.error("Erreur lors de la mise à jour du ticket.")
+
+            st.markdown("---")
+            if st.button("🗑️ Supprimer le ticket", type="primary"):
+                if api_client.delete_ticket(ticket_id):
+                    st.success("Ticket supprimé avec succès.")
+                    st.session_state.page = "tech_tickets"  # ou "employee_tickets" selon le contexte
+                    st.experimental_rerun()
+                else:
+                    st.error("Erreur lors de la suppression du ticket.")
+
     
     elif st.session_state.page == "tech_tickets":
         st.title("Tickets à traiter")
@@ -259,7 +267,7 @@ else:
                 # Récupérer les utilisateurs selon le rôle filtré
                 users = api_client.get_employees(role=role_filter)
             elif role_filter == "Admin":
-                
+
                 users = api_client.get_admins(role=role_filter)
             else:
                 # Récupérer tous les utilisateurs si "Tous" est sélectionné
