@@ -1,0 +1,143 @@
+pipeline {
+    agent any     // Utilise n'importe quel agent Jenkins disponible
+    
+    environment {
+        // Définition des variables d'environnement utilisées dans le pipeline
+        DOCKER_HUB_CREDS = credentials('docker-hub-credentials')    // Récupère les credentials Docker Hub
+        APP_VERSION = "${BUILD_NUMBER}"                            // Utilise le numéro de build comme version
+        DOCKER_REGISTRY = "votre-registry"                         // Votre registry Docker (ex: Docker Hub username)
+        DOCKER_FRONTEND_IMAGE = "${DOCKER_REGISTRY}/support-ticket-frontend:${APP_VERSION}"
+        DOCKER_BACKEND_IMAGE = "${DOCKER_REGISTRY}/support-ticket-backend:${APP_VERSION}"
+        DOCKER_DB_IMAGE = "${DOCKER_REGISTRY}/support-ticket-db:${APP_VERSION}"
+    }
+    
+    stages {
+        // Étape 1: Récupération du code source
+        stage('Checkout') {
+            steps {
+                checkout scm    // Récupère le code depuis le système de gestion de versions
+                echo 'Code source récupéré avec succès'
+            }
+        }
+        
+        // Étape 2: Tests du backend
+        stage('Test Backend') {
+            steps {
+                dir('backend') {    // Se déplace dans le répertoire backend
+                    sh 'npm install'    // Installe les dépendances
+                    sh 'npm test'       // Exécute les tests
+                }
+                echo 'Tests backend terminés'
+            }
+        }
+        
+        // Étape 3: Analyse de la qualité du code
+        stage('Code Quality Backend') {
+            steps {
+                dir('backend') {
+                    sh 'npm install eslint --save-dev'    // Installe ESLint
+                    sh 'npx eslint .'                    // Analyse le code
+                }
+                echo 'Analyse de qualité du code backend terminée'
+            }
+        }
+        
+        // Étape 4: Construction des images Docker
+        stage('Build Docker Images') {
+            steps {
+                // Construit les images Docker pour chaque composant
+                sh "docker build -t ${DOCKER_FRONTEND_IMAGE} -f ./frontend/Dockerfile ./frontend"
+                sh "docker build -t ${DOCKER_BACKEND_IMAGE} -f ./backend/Dockerfile ./backend"
+                sh "docker build -t ${DOCKER_DB_IMAGE} -f ./database/Dockerfile ./database"
+                echo 'Images Docker construites avec succès'
+            }
+        }
+        
+        // Étape 5: Push des images vers le registry Docker
+        stage('Push Docker Images') {
+            steps {
+                // Connexion à Docker Hub
+                sh 'echo $DOCKER_HUB_CREDS_PSW | docker login -u $DOCKER_HUB_CREDS_USR --password-stdin'
+                // Push des images
+                sh "docker push ${DOCKER_FRONTEND_IMAGE}"
+                sh "docker push ${DOCKER_BACKEND_IMAGE}"
+                sh "docker push ${DOCKER_DB_IMAGE}"
+                echo 'Images Docker envoyées au registre'
+            }
+        }
+        
+        // Étape 6: Déploiement en environnement de développement (si branche develop)
+        stage('Deploy Development') {
+            when {
+                branch 'develop'    // S'exécute uniquement pour la branche develop
+            }
+            steps {
+                // Met à jour les versions dans docker-compose.yml
+                sh "sed -i 's|support-ticket-frontend:.*|support-ticket-frontend:${APP_VERSION}|' docker-compose.yml"
+                sh "sed -i 's|support-ticket-backend:.*|support-ticket-backend:${APP_VERSION}|' docker-compose.yml"
+                sh "sed -i 's|support-ticket-db:.*|support-ticket-db:${APP_VERSION}|' docker-compose.yml"
+                
+                // Déploie avec Docker Compose
+                sh 'docker-compose down'
+                sh 'docker-compose up -d'
+                echo 'Déploiement en environnement de développement terminé'
+            }
+        }
+        
+        // Étape 7: Déploiement en production (si branche main)
+        stage('Deploy Production') {
+            when {
+                branch 'main'    // S'exécute uniquement pour la branche main
+            }
+            steps {
+                // Met à jour les versions dans docker-compose.prod.yml
+                sh "sed -i 's|support-ticket-frontend:.*|support-ticket-frontend:${APP_VERSION}|' docker-compose.prod.yml"
+                sh "sed -i 's|support-ticket-backend:.*|support-ticket-backend:${APP_VERSION}|' docker-compose.prod.yml"
+                sh "sed -i 's|support-ticket-db:.*|support-ticket-db:${APP_VERSION}|' docker-compose.prod.yml"
+                
+                // Déploie avec Docker Compose en production
+                sh 'docker-compose -f docker-compose.prod.yml down'
+                sh 'docker-compose -f docker-compose.prod.yml up -d'
+                echo 'Déploiement en production terminé'
+            }
+        }
+        
+        // Étape 8: Tests fonctionnels post-déploiement
+        stage('Functional Tests') {
+            steps {
+                // Attendre que les services soient disponibles
+                sh 'sleep 30'
+                // Tester les points d'accès
+                sh 'curl -f http://localhost:8501'             // Vérifie le frontend Streamlit
+                sh 'curl -f http://localhost:3000/api/health'  // Vérifie l'API backend
+                echo 'Tests fonctionnels terminés'
+            }
+        }
+    }
+    
+    // Actions post-pipeline
+    post {
+        success {
+            echo 'Pipeline CI/CD terminé avec succès!'
+            // Notification de succès
+            emailext (
+                subject: "Pipeline réussi: ${currentBuild.fullDisplayName}",
+                body: "Le pipeline CI/CD a été exécuté avec succès: ${env.BUILD_URL}",
+                to: 'bmassizelle@gmail.com'
+            )
+        }
+        failure {
+            echo 'Pipeline CI/CD échoué!'
+            // Notification d'échec
+            emailext (
+                subject: "Pipeline échoué: ${currentBuild.fullDisplayName}",
+                body: "Le pipeline CI/CD a échoué: ${env.BUILD_URL}",
+                to: 'bmassizelle@gmail.com'
+            )
+        }
+        always {
+            // Nettoyage de l'espace de travail
+            cleanWs()
+        }
+    }
+}
